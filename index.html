@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="doodleClassifier.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  </head>
+
+  <body>
+    <canvas
+      id="myCanvas"
+      width="400"
+      height="200"
+      style="border: 1px solid black"
+      >1
+    </canvas>
+    <script>
+      const modelUrl =
+        "https://doodle-classifier-mini.s3.ap-northeast-1.amazonaws.com/";
+
+      async function loadModel() {
+        // Load model architecture (model.json) and weights (group1-shard1of1.bin)
+        const model = await tf.loadLayersModel(modelUrl + "model.json");
+
+        // Make predictions using the model
+        const input = tf.tensor2d([[1, 2, 3, 4]], [1, 4]); // Example input data̦
+        const output = model.predict(input);
+        output.print();
+      }
+
+      loadModel().catch((error) => {
+        console.error("Failed to load model:", error);
+      });
+
+      loadModel().then((model) => {
+        // Use the loaded model for predictions
+        console.log(model);
+      });
+    </script>
+  </body>
+</html>
