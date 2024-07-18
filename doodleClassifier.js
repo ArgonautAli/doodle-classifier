@@ -1,30 +1,32 @@
-
-async function loadModel() {
-    try {
-        const modelUrl =
-        "https://doodle-classifier-mini.s3.ap-northeast-1.amazonaws.com/model/";   
-
-        const model = await tf.loadLayersModel("./model/model.json");
-
-        console.log("model", model)
-
-    } catch (error) {
-        console.error("Failed to load the model:", error);
-        throw error;
-    }
+// Sample input data for a grayscale image of size 28x28 pixels
+const inputDataArray = new Float32Array(784);
+for (let i = 0; i < 784; i++) {
+  inputDataArray[i] = Math.random(); // Use random values between 0 and 1 for testing
 }
 
-async function initializeModel() {
-    try {
-        const model = await loadModel();
-        // Now you can use the model for predictions
-        console.log("Model is ready for predictions");
-        // You might want to store the model in a global variable or state for later use
-        window.doodleModel = model;
-    } catch (error) {
-        console.error("Failed to initialize the model:", error);
-    }
+// Convert the array to a 4D tensor
+const inputData = tf.tensor4d(inputDataArray, [1, 28, 28, 1]);
+console.log("inputData", inputData);
+
+async function runModel() {
+  const modelUrl =
+    "https://doodle-classifier-mini.s3.ap-northeast-1.amazonaws.com/model/";
+  const model = await tf.loadLayersModel(modelUrl + "model.json");
+
+  // Log model summary for debugging
+  model.summary();
+  console.log("  model.summary()",  model.summary())
+
+  // Perform prediction
+  const output = model.predict(inputData);
+
+  // Log the output
+  output.print();
 }
 
-// Call initializeModel when the page loads or as needed
-initializeModel();
+// Run the function
+runModel();
+
+// Changed batch_shape to input_shape
+
+// For TensorFlow.js 4.20.0, which was released in early 2024, it would be compatible with TensorFlow (Python) versions that were current around that period, likely in the range of TensorFlow 2.11.x to TensorFlow 2.12.x.
