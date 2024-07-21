@@ -1,32 +1,69 @@
-// Sample input data for a grayscale image of size 28x28 pixels
-const inputDataArray = new Float32Array(784);
-for (let i = 0; i < 784; i++) {
-  inputDataArray[i] = Math.random(); // Use random values between 0 and 1 for testing
-}
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
+
+const canvasOffsetX = canvas.offsetLeft;
+const canvasOffsetY = canvas.offsetTop;
+
+// canvas.width = window.innerWidth - canvasOffsetX;
+// canvas.height = window.innerHeight - canvasOffsetY;
+
+let isPainting = false;
+let lineWidth = 5;
+let startX;
+let startY;
+
+const clearButton = document.getElementById("clear");
+clearButton.onclick = function () {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
+canvas.addEventListener("mousedown", (e) => {
+  isPainting = true;
+  startX = e.clientX - canvasOffsetX;
+  startY = e.clientY - canvasOffsetY;
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+});
+
+canvas.addEventListener("mouseup", () => {
+  isPainting = false;
+  ctx.stroke();
+  ctx.beginPath();
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (!isPainting) return;
+  ctx.lineTo(e.clientX - canvasOffsetX, e.clientY - canvasOffsetY);
+  ctx.stroke();
+});
 
 // Convert the array to a 4D tensor
-const inputData = tf.tensor4d(inputDataArray, [1, 28, 28, 1]);
-console.log("inputData", inputData);
+// const inputData = tf.tensor4d(inputDataArray, [1, 28, 28, 1]);
+
+const getPixel = document.getElementById("predict");
+console.log("getPixel", getPixel);
+
+getPixel.onclick = function () {
+  console.log("clicked");
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  console.log(imageData);
+  // Now you can access the pixel data through imageData.data
+  const pixelData = imageData.data;
+  console.log(pixelData);
+};
 
 async function runModel() {
   const modelUrl =
     "https://doodle-classifier-mini.s3.ap-northeast-1.amazonaws.com/model/";
   const model = await tf.loadLayersModel(modelUrl + "model.json");
 
-  // Log model summary for debugging
   model.summary();
-  console.log("  model.summary()",  model.summary())
-
-  // Perform prediction
-  const output = model.predict(inputData);
-
-  // Log the output
-  output.print();
+  console.log("  model.summary()", model);
 }
 
-// Run the function
 runModel();
 
-// Changed batch_shape to input_shape
-
-// For TensorFlow.js 4.20.0, which was released in early 2024, it would be compatible with TensorFlow (Python) versions that were current around that period, likely in the range of TensorFlow 2.11.x to TensorFlow 2.12.x.
+// const canvas = document.getElementById("myCanvas");
+// const ctx = canvas.getContext("2d");
