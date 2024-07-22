@@ -108,6 +108,13 @@ function processImage(imageData) {
     imageWidth,
     imageHeight
   );
+
+  for (let i = 0; i < resized_image_data.data.length; i += 4) {
+    resized_image_data.data[i] = 255 - resized_image_data.data[i];
+    resized_image_data.data[i + 1] = 255 - resized_image_data.data[i + 1];
+    resized_image_data.data[i + 2] = 255 - resized_image_data.data[i + 2];
+    resized_image_data.data[i + 3] = 255;
+  }
   const resized_data = resized_image_data.data;
 
   // convert to greyscale & normalize
