@@ -83,15 +83,17 @@ function processImage(imageData) {
   const imageWidth = 28;
   const imageHeight = 28;
 
-  const temp_cvs = document.createElement("canvas");
-  temp_cvs.width = imageWidth;
-  temp_cvs.height = imageHeight;
-  const temp_ctx = temp_cvs.getContext("2d");
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = imageWidth;
+  tempCanvas.height = imageHeight;
+  const tempCtx = tempCanvas.getContext("2d");
 
-  temp_ctx.putImageData(imageData, 0, 0);
+  // Draw the image data on the canvas
+  tempCtx.putImageData(imageData, 0, 0);
 
-  temp_ctx.drawImage(
-    temp_cvs,
+  // Resize the image to 28x28
+  tempCtx.drawImage(
+    tempCanvas,
     0,
     0,
     imageData.width,
@@ -102,41 +104,35 @@ function processImage(imageData) {
     imageHeight
   );
 
-  const resized_image_data = temp_ctx.getImageData(
-    0,
-    0,
-    imageWidth,
-    imageHeight
-  );
+  // Get the resized image data
+  const resizedImageData = tempCtx.getImageData(0, 0, imageWidth, imageHeight);
 
-  for (let i = 0; i < resized_image_data.data.length; i += 4) {
-    resized_image_data.data[i] = 255 - resized_image_data.data[i];
-    resized_image_data.data[i + 1] = 255 - resized_image_data.data[i + 1];
-    resized_image_data.data[i + 2] = 255 - resized_image_data.data[i + 2];
-    resized_image_data.data[i + 3] = 255;
-  }
-  const resized_data = resized_image_data.data;
-
-  // convert to greyscale & normalize
-  const normalized_data = new Float32Array(imageWidth * imageHeight);
-  for (let i = 0; i < resized_data.length; i++) {
-    const greyscale =
-      (resized_data[i] + resized_data[i + 1] + resized_data[i + 2]) / 3;
-    normalized_data[i / 4] = greyscale / 255.0;
+  // Convert to grayscale and normalize
+  const normalizedData = new Float32Array(imageWidth * imageHeight);
+  for (let i = 0; i < resizedImageData.data.length; i += 4) {
+    const r = resizedImageData.data[i];
+    const g = resizedImageData.data[i + 1];
+    const b = resizedImageData.data[i + 2];
+    const grayscale = (r + g + b) / 3;
+    normalizedData[i / 4] = grayscale / 255.0;
   }
 
-  // reshaping as model's input
-  const reshaped_data = new Float32Array(1 * imageWidth * imageHeight * 1);
-  for (let i = 0; i < reshaped_data.length; i++) {
-    reshaped_data[i] = normalized_data[i];
+  // Reshape as model's input
+  const reshapedData = new Float32Array(1 * imageWidth * imageHeight * 1);
+  for (let i = 0; i < reshapedData.length; i++) {
+    reshapedData[i] = normalizedData[i];
   }
 
-  return reshaped_data;
+  // Clear the temporary canvas
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+  console.log("reshapedData", reshapedData);
+  return reshapedData;
 }
 
 getPixel.onclick = function () {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const pixelData = imageData.data;
+  console.log("imageData", imageData);
   const reshaped_data = processImage(imageData);
   predict_doodle(reshaped_data);
 };
