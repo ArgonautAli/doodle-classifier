@@ -116,6 +116,7 @@ async function predict() {
   inputTensor.print();
 
   console.log("predictionArray", predictionArray);
+  ``;
 
   const topPredictions = predictionArray[0]
     .map((prob, index) => ({ label: classLabels[index], probability: prob }))
