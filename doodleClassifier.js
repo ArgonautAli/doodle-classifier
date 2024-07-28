@@ -3,43 +3,51 @@ const modelUrl =
 
 const classLabels = ["ambulance", "cat", "dog", "house", "tree"];
 
-const canvas = document.getElementById("myCanvas");
-const ctx = canvas.getContext("2d");
+const drawCanvas = document.getElementById("drawCanvas");
 
-const canvasOffsetX = canvas.offsetLeft;
-const canvasOffsetY = canvas.offsetTop;
+const predictBtn = document.getElementById("predictBtn");
+const clearBtn = document.getElementById("clearBtn");
+const resultP = document.getElementById("result");
 
-let isPainting = false;
-let lineWidth = 5;
-let startX;
-let startY;
+const drawCtx = drawCanvas.getContext("2d");
 
-const clearButton = document.getElementById("clear");
-clearButton.onclick = function () {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-};
+let isDrawing = false;
 
-canvas.addEventListener("mousedown", (e) => {
-  isPainting = true;
-  startX = e.clientX - canvasOffsetX;
-  startY = e.clientY - canvasOffsetY;
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = lineWidth;
-  ctx.beginPath();
-  ctx.moveTo(startX, startY);
-});
+drawCtx.strokeStyle = "black";
+drawCtx.lineWidth = 10;
+drawCtx.lineCap = "round";
+drawCtx.lineJoin = "round";
 
-canvas.addEventListener("mouseup", () => {
-  isPainting = false;
-  ctx.stroke();
-  ctx.beginPath();
-});
+drawCanvas.addEventListener("mousedown", startDrawing);
+drawCanvas.addEventListener("mousemove", draw);
+drawCanvas.addEventListener("mouseup", stopDrawing);
+drawCanvas.addEventListener("mouseout", stopDrawing);
 
-canvas.addEventListener("mousemove", (e) => {
-  if (!isPainting) return;
-  ctx.lineTo(e.clientX - canvasOffsetX, e.clientY - canvasOffsetY);
-  ctx.stroke();
-});
+function startDrawing(e) {
+  isDrawing = true;
+  draw(e);
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  const rect = drawCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  drawCtx.lineTo(x, y);
+  drawCtx.stroke();
+  drawCtx.beginPath();
+  drawCtx.moveTo(x, y);
+}
+
+function stopDrawing() {
+  isDrawing = false;
+  drawCtx.beginPath();
+}
+
+function clearCanvas() {
+  drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  resultP.textContent = "";
+}
 
 async function runModel() {
   const model = await tf.loadLayersModel(modelUrl + "model.json");
@@ -47,97 +55,82 @@ async function runModel() {
   model.summary();
 }
 
-async function predict_doodle(reshaped_data) {
-  const model = await tf.loadLayersModel(modelUrl + "model.json");
-  const input_data = tf.tensor4d(reshaped_data, [1, 28, 28, 1]);
-  const prediction = model.predict(input_data);
-  const predictionValues = prediction.dataSync();
-  // Find the predicted class and its confidence
-  let predictedClass = -1;
-  let maxConfidence = -1;
-  for (let i = 0; i < predictionValues.length; i++) {
-    if (predictionValues[i] > maxConfidence) {
-      maxConfidence = predictionValues[i];
-      predictedClass = i;
-    }
-  }
-  const predictedClassIndex = prediction.argMax(-1).dataSync()[0];
-  const predictedClassLabel = classLabels[predictedClassIndex];
-  const predictedConfidence = predictionValues[predictedClassIndex];
-
-  console.log(`Predicted class: ${predictedClassLabel}`);
-  console.log(`Confidence: ${predictedConfidence}`);
-
-  // Get top 5 predictions
-  const top5 = Array.from(predictionValues)
-    .map((confidence, index) => ({ confidence, label: classLabels[index] }))
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 5);
-
-  console.log("Top 5 predictions:", top5);
-}
-
-const getPixel = document.getElementById("predict");
-
-function processImage(imageData) {
-  const imageWidth = 28;
-  const imageHeight = 28;
-
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = imageWidth;
-  tempCanvas.height = imageHeight;
-  const tempCtx = tempCanvas.getContext("2d");
-
-  // Draw the image data on the canvas
-  tempCtx.putImageData(imageData, 0, 0);
-
-  // Resize the image to 28x28
-  tempCtx.drawImage(
-    tempCanvas,
+function processImage() {
+  const imageData = drawCtx.getImageData(
     0,
     0,
-    imageData.width,
-    imageData.height,
-    0,
-    0,
-    imageWidth,
-    imageHeight
+    drawCanvas.width,
+    drawCanvas.height
   );
 
-  // Get the resized image data
-  const resizedImageData = tempCtx.getImageData(0, 0, imageWidth, imageHeight);
+  // Invert drawing
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    imageData.data[i] = 255 - imageData.data[i]; // Red
+    imageData.data[i + 1] = 255 - imageData.data[i + 1]; // Green
+    imageData.data[i + 2] = 255 - imageData.data[i + 2]; // Blue
+  }
 
-  // Convert to grayscale and normalize
-  const normalizedData = new Float32Array(imageWidth * imageHeight);
+  // rescale the image in temp cvs
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = drawCanvas.width;
+  tempCanvas.height = drawCanvas.height;
+  const tempCtx = tempCanvas.getContext("2d");
+
+  // Draw the inverted image on the temporary canvas
+  // tempCtx.putImageData(imageData, 0, 0);
+
+  // Create a second temporary canvas for the resized image
+  const resizedCanvas = document.createElement("canvas");
+  resizedCanvas.width = 28;
+  resizedCanvas.height = 28;
+  const resizedCtx = resizedCanvas.getContext("2d");
+
+  // Draw the inverted image onto the resized canvas
+  resizedCtx.drawImage(tempCanvas, 0, 0, 28, 28);
+
+  // Get the rescaled image data
+  const resizedImageData = resizedCtx.getImageData(0, 0, 28, 28);
+
+  // Convert to tensor
+  const inputData = new Float32Array(28 * 28);
   for (let i = 0; i < resizedImageData.data.length; i += 4) {
     const r = resizedImageData.data[i];
     const g = resizedImageData.data[i + 1];
     const b = resizedImageData.data[i + 2];
     const grayscale = (r + g + b) / 3;
-    normalizedData[i / 4] = grayscale / 255.0;
+    inputData[i / 4] = grayscale / 255.0; // Normalize to [0, 1]
   }
 
-  // Reshape as model's input
-  const reshapedData = new Float32Array(1 * imageWidth * imageHeight * 1);
-  for (let i = 0; i < reshapedData.length; i++) {
-    reshapedData[i] = normalizedData[i];
-  }
+  console.log("Tensor Input Data:", inputData);
 
-  // Clear the temporary canvas
-  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-  console.log("reshapedData", reshapedData);
-  return reshapedData;
+  // Return tensor
+  return tf.tensor4d(inputData, [1, 28, 28, 1]);
 }
 
-getPixel.onclick = function () {
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const pixelData = imageData.data;
-  console.log("imageData", imageData);
-  const reshaped_data = processImage(imageData);
-  predict_doodle(reshaped_data);
-};
+async function predict() {
+  const model = await tf.loadLayersModel(modelUrl + "model.json");
+  const inputTensor = processImage();
+  const prediction = model.predict(inputTensor);
+  const predictionArray = await prediction.array();
+
+  inputTensor.print();
+
+  console.log("predictionArray", predictionArray);
+
+  const topPredictions = predictionArray[0]
+    .map((prob, index) => ({ label: classLabels[index], probability: prob }))
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, 5);
+
+  let resultText = "Top 5 predictions:\n";
+  topPredictions.forEach((pred) => {
+    resultText += `${pred.label}: ${(pred.probability * 100).toFixed(2)}%\n`;
+  });
+
+  resultP.textContent = resultText;
+}
 
 runModel();
 
-// const canvas = document.getElementById("myCanvas");
-// const ctx = canvas.getContext("2d");
+predictBtn.addEventListener("click", predict);
+clearBtn.addEventListener("click", clearCanvas);
