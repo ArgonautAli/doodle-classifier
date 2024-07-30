@@ -51,7 +51,6 @@ function clearCanvas() {
 
 async function runModel() {
   const model = await tf.loadLayersModel(modelUrl + "model.json");
-
   model.summary();
 }
 
@@ -77,7 +76,7 @@ function processImage() {
   const tempCtx = tempCanvas.getContext("2d");
 
   // Draw the inverted image on the temporary canvas
-  // tempCtx.putImageData(imageData, 0, 0);
+  tempCtx.putImageData(imageData, 0, 0);
 
   // Create a second temporary canvas for the resized image
   const resizedCanvas = document.createElement("canvas");
@@ -116,7 +115,6 @@ async function predict() {
   inputTensor.print();
 
   console.log("predictionArray", predictionArray);
-  ``;
 
   const topPredictions = predictionArray[0]
     .map((prob, index) => ({ label: classLabels[index], probability: prob }))
